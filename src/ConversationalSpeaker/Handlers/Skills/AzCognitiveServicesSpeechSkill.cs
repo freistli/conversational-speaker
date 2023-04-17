@@ -34,13 +34,23 @@ namespace ConversationalSpeaker
 
             _audioConfig = AudioConfig.FromDefaultMicrophoneInput();
 
+            var autoDetectSourceLanguageConfig =
+                AutoDetectSourceLanguageConfig.FromLanguages(
+                    new string[] { _options.SpeechRecognitionLanguage, "zh-CN" });
+
+            var audioSynthesisOutputConfig = AudioConfig.FromDefaultSpeakerOutput();
+
+                    
+            var autoDetectSynthesisSourceLanguageConfig =
+                AutoDetectSourceLanguageConfig.FromOpenRange();
+
             SpeechConfig speechConfig = SpeechConfig.FromSubscription(_options.Key, _options.Region);
-            speechConfig.SpeechRecognitionLanguage = _options.SpeechRecognitionLanguage;
+            //speechConfig.SpeechRecognitionLanguage = _options.SpeechRecognitionLanguage;
             speechConfig.SetProperty(PropertyId.SpeechServiceResponse_PostProcessingOption, "TrueText");
             speechConfig.SpeechSynthesisVoiceName = _options.SpeechSynthesisVoiceName;
 
-            _speechRecognizer = new SpeechRecognizer(speechConfig, _audioConfig);           
-            _speechSynthesizer = new SpeechSynthesizer(speechConfig);
+            _speechRecognizer = new SpeechRecognizer(speechConfig,autoDetectSourceLanguageConfig, _audioConfig);           
+            _speechSynthesizer = new SpeechSynthesizer(speechConfig,autoDetectSynthesisSourceLanguageConfig, audioSynthesisOutputConfig);
         }
 
         [SKFunction("Listen to the microphone and perform speech-to-text.")]
@@ -91,7 +101,8 @@ namespace ConversationalSpeaker
                     _options.SpeechSynthesisVoiceName);
 
                 _logger.LogDebug(ssml);
-                await _speechSynthesizer.SpeakSsmlAsync(ssml);
+                //await _speechSynthesizer.SpeakSsmlAsync(ssml);
+                await _speechSynthesizer.SpeakTextAsync(message);
             }
         }
 
