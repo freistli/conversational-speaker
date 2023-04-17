@@ -30,5 +30,9 @@
     "PresencePenalty": 0, // 0.0 - 2.0
     "Model": "gpt-3.5-turbo", // For a list of available models, see https://beta.openai.com/docs/models/overview
     //"OrganizationId": "" // Organization ID for those with multiple organizations (optional).
-  }
+  },
+
+  "AzureOpenAI": {
+    "ChatGPTUrl": "" // dotnet user-secrets set "AzureOpenAI:ChatGPTUrl" "****"
+    }
 }

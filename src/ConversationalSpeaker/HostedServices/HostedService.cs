@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using System.Text;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -8,6 +9,8 @@ using Microsoft.SemanticKernel.AI.ChatCompletion;
 using Microsoft.SemanticKernel.Configuration;
 using Microsoft.SemanticKernel.Orchestration;
 using NetCoreAudio;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace ConversationalSpeaker
 {
@@ -26,6 +29,8 @@ namespace ConversationalSpeaker
         private readonly OpenAIChatHistory _chatHistory;
         private readonly ChatRequestSettings _chatRequestSettings;
 
+        private readonly AzureOpenAiOptions _azureOpenAIOptions;
+
         private Task _executeTask;
         private readonly CancellationTokenSource _cancelToken = new();
 
@@ -41,6 +46,7 @@ namespace ConversationalSpeaker
             IKernel semanticKernel,
             AzCognitiveServicesSpeechSkill speechSkill,
             IOptions<OpenAiServiceOptions> openAIOptions,
+            IOptions<AzureOpenAiOptions> azureOpenAIOptions,
             IOptions<GeneralOptions> generalOptions,
             ILogger<HostedService> logger)
         {
@@ -57,10 +63,14 @@ namespace ConversationalSpeaker
 
             _wakeWordListener = wakeWordListener;
             _semanticKernel = semanticKernel;
+            _azureOpenAIOptions = azureOpenAIOptions?.Value;
 
-            _semanticKernel.Config.AddOpenAIChatCompletion("chat", openAIOptions.Value.Model, openAIOptions.Value.Key, openAIOptions.Value.OrganizationId);
-            _chatCompletion = _semanticKernel.GetService<IChatCompletion>();
-            _chatHistory = (OpenAIChatHistory)_chatCompletion.CreateNewChat(generalOptions.Value.SystemPrompt);
+            if(string.IsNullOrEmpty( _azureOpenAIOptions.ChatGPTUrl))
+            {            
+                _semanticKernel.Config.AddOpenAIChatCompletion("chat", openAIOptions.Value.Model, openAIOptions.Value.Key, openAIOptions.Value.OrganizationId);
+                _chatCompletion = _semanticKernel.GetService<IChatCompletion>();
+                _chatHistory = (OpenAIChatHistory)_chatCompletion.CreateNewChat(generalOptions.Value.SystemPrompt);
+            }
 
             _speechSkill = _semanticKernel.ImportSkill(speechSkill);
 
@@ -82,6 +92,8 @@ namespace ConversationalSpeaker
         /// </summary>
         public async Task ExecuteAsync(CancellationToken cancellationToken)
         {
+            string messageId = "";
+
             while (!cancellationToken.IsCancellationRequested)
             {
                 // Play a notification to let the user know we have started listening for the wake phrase.
@@ -109,11 +121,28 @@ namespace ConversationalSpeaker
                     string reply = string.Empty;
                     try
                     {
-                        _chatHistory.AddUserMessage(userSpoke);
-                        reply = await _chatCompletion.GenerateMessageAsync(_chatHistory, _chatRequestSettings);
+                         if(string.IsNullOrEmpty(_azureOpenAIOptions.ChatGPTUrl))
+                         {
+                            _chatHistory.AddUserMessage(userSpoke);
+                            reply = await _chatCompletion.GenerateMessageAsync(_chatHistory, _chatRequestSettings);
+                            // Add the interaction to the chat history.
+                            _chatHistory.AddAssistantMessage(reply);
+                         }
+                         else
+                         {
+                             using (var httpClient = new HttpClient())
+                            {
+                                var requestContentString = $"{{\"prompt\": \"{userSpoke}\",\"name\": \"\", \"messageId\":\"{messageId}\"}}";
+                                var content = new StringContent(requestContentString, Encoding.UTF8, "application/json");
+                                HttpResponseMessage result = await httpClient.PostAsync(new Uri(_azureOpenAIOptions.ChatGPTUrl), content);
+                                  var responseString = await result.Content.ReadAsStringAsync();
+                                    //Parse JSON string
+                                    var responseJson = JObject.Parse(responseString);
+                                    reply = responseJson["text"].ToString();     
+                                    messageId = responseJson["id"].ToString();
+                            }                            
+                         }
 
-                        // Add the interaction to the chat history.
-                        _chatHistory.AddAssistantMessage(reply);
                     }
                     catch (AIException aiex)
                     {
@@ -127,6 +156,7 @@ namespace ConversationalSpeaker
                     // If the user said "Goodbye" - stop listening and wait for the wake work again.
                     if (userSpoke.StartsWith("goodbye", StringComparison.InvariantCultureIgnoreCase))
                     {
+                        messageId = "";
                         break;
                     }
                 }

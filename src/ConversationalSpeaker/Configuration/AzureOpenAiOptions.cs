@@ -6,6 +6,10 @@
     public class AzureOpenAiOptions
     {
         /// <summary>
+        /// ChatGPT service URL.
+        /// </summary>
+        public string ChatGPTUrl { get; set; }
+        /// <summary>
         /// API Key.
         /// </summary>
         public string Key { get; set; }
