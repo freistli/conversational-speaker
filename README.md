@@ -14,6 +14,7 @@ Get the function Url (azureopenai or azprompter), it will be used in the step 2.
 ```
 dotnet user-secrets set "AzureOpenAI:ChatGPTUrl" "{Azure ChatGPT Azure Function Url}"
 ```
+<img width="745" alt="image" src="https://user-images.githubusercontent.com/8623897/232411060-927ea765-d7c6-4d6f-93e6-d47667779eb5.png">
 
 
 
