@@ -1,3 +1,22 @@
+# Support Azure OpenAI ChatGPT Here
+
+1. Build and publish this Azure Function:
+
+https://github.com/freistli/chatgpt-api/tree/main/demos/demo-azure-chatgpt-function
+
+Follow its readme to add environment varibles (your Auzre OpenAI Key and Endpoint) for the Azure Function
+
+Get the function Url (azureopenai or azprompter), it will be used in the step 2.
+
+
+2. Follow the [Setup](#setup) Guide and then run this command
+
+```
+dotnet user-secrets set "AzureOpenAI:ChatGPTUrl" "{Azure ChatGPT Azure Function Url}"
+```
+
+
+
 # Conversational Speaker
 ## Now with [Semantic Kernel](https://aka.ms/skrepo) and [ChatGPT](https://openai.com/blog/chatgpt)!
 The Conversational Speaker, a.k.a. "Friend Bot", uses a Raspberry Pi (or desktop) to enable spoken conversation with OpenAI large language models. This implementation listens to speech, processes the conversation through the OpenAI service, and responds back.
