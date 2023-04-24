@@ -5,6 +5,7 @@
     /// </summary>
     public class AzureCognitiveServicesOptions
     {
+        public string AutoDetect { get; set;}
         /// <summary>
         /// Location/region (e.g. EastUS)
         /// </summary>

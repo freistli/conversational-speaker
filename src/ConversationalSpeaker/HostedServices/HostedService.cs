@@ -65,8 +65,8 @@ namespace ConversationalSpeaker
             _semanticKernel = semanticKernel;
             _azureOpenAIOptions = azureOpenAIOptions?.Value;
 
-            if(string.IsNullOrEmpty( _azureOpenAIOptions.ChatGPTUrl))
-            {            
+            if (string.IsNullOrEmpty(_azureOpenAIOptions.ChatGPTUrl))
+            {
                 _semanticKernel.Config.AddOpenAIChatCompletion("chat", openAIOptions.Value.Model, openAIOptions.Value.Key, openAIOptions.Value.OrganizationId);
                 _chatCompletion = _semanticKernel.GetService<IChatCompletion>();
                 _chatHistory = (OpenAIChatHistory)_chatCompletion.CreateNewChat(generalOptions.Value.SystemPrompt);
@@ -110,55 +110,69 @@ namespace ConversationalSpeaker
                 // Say hello on startup
                 await _semanticKernel.RunAsync("Hello!", _speechSkill["Speak"]);
 
+                int loopCount = 0;
                 // Start listening
                 while (!cancellationToken.IsCancellationRequested)
                 {
+                    if (++loopCount >= 5)
+                    {
+                        await _semanticKernel.RunAsync("Talk to you later", _speechSkill["Speak"]);
+                        loopCount = 0;
+                    }
+
                     // Listen to the user
                     SKContext context = await _semanticKernel.RunAsync(_speechSkill["Listen"]);
                     string userSpoke = context.Result;
 
-                    // Get a reply from the AI and add it to the chat history.
-                    string reply = string.Empty;
-                    try
+                    if (string.IsNullOrEmpty(userSpoke) == false)
                     {
-                         if(string.IsNullOrEmpty(_azureOpenAIOptions.ChatGPTUrl))
-                         {
-                            _chatHistory.AddUserMessage(userSpoke);
-                            reply = await _chatCompletion.GenerateMessageAsync(_chatHistory, _chatRequestSettings);
-                            // Add the interaction to the chat history.
-                            _chatHistory.AddAssistantMessage(reply);
-                         }
-                         else
-                         {
-                             using (var httpClient = new HttpClient())
+
+                        loopCount = 0;
+                        // Get a reply from the AI and add it to the chat history.
+                        string reply = string.Empty;
+                        try
+                        {
+                            if (string.IsNullOrEmpty(_azureOpenAIOptions.ChatGPTUrl))
                             {
-                                var requestContentString = $"{{\"prompt\": \"{userSpoke}\",\"name\": \"\", \"messageId\":\"{messageId}\"}}";
-                                var content = new StringContent(requestContentString, Encoding.UTF8, "application/json");
-                                HttpResponseMessage result = await httpClient.PostAsync(new Uri(_azureOpenAIOptions.ChatGPTUrl), content);
-                                  var responseString = await result.Content.ReadAsStringAsync();
+                                _chatHistory.AddUserMessage(userSpoke);
+                                reply = await _chatCompletion.GenerateMessageAsync(_chatHistory, _chatRequestSettings);
+                                // Add the interaction to the chat history.
+                                _chatHistory.AddAssistantMessage(reply);
+                            }
+                            else
+                            {
+                                using (var httpClient = new HttpClient())
+                                {
+                                    var requestContentString = $"{{\"prompt\": \"{userSpoke}\",\"name\": \"\", \"messageId\":\"{messageId}\"}}";
+                                    var content = new StringContent(requestContentString, Encoding.UTF8, "application/json");
+                                    HttpResponseMessage result = await httpClient.PostAsync(new Uri(_azureOpenAIOptions.ChatGPTUrl), content);
+                                    var responseString = await result.Content.ReadAsStringAsync();
                                     //Parse JSON string
                                     var responseJson = JObject.Parse(responseString);
-                                    reply = responseJson["text"].ToString();     
+                                    reply = responseJson["text"].ToString();
                                     messageId = responseJson["id"].ToString();
-                            }                            
-                         }
+                                }
+                            }
+
+                        }
+                        catch (AIException aiex)
+                        {
+                            _logger.LogError($"OpenAI returned an error. {aiex.ErrorCode}: {aiex.Message}");
+                            reply = "OpenAI returned an error. Please try again.";
+                        }
+
+                        // Speak the AI's reply
+                        await _semanticKernel.RunAsync(reply, _speechSkill["Speak"]);
+
+                        // If the user said "Goodbye" - stop listening and wait for the wake work again.
+                        if (userSpoke.StartsWith("goodbye", StringComparison.InvariantCultureIgnoreCase))
+                        {
+                            messageId = "";
+                            break;
+                        }
 
                     }
-                    catch (AIException aiex)
-                    {
-                        _logger.LogError($"OpenAI returned an error. {aiex.ErrorCode}: {aiex.Message}");
-                        reply = "OpenAI returned an error. Please try again.";
-                    }
 
-                    // Speak the AI's reply
-                    await _semanticKernel.RunAsync(reply, _speechSkill["Speak"]);
-
-                    // If the user said "Goodbye" - stop listening and wait for the wake work again.
-                    if (userSpoke.StartsWith("goodbye", StringComparison.InvariantCultureIgnoreCase))
-                    {
-                        messageId = "";
-                        break;
-                    }
                 }
             }
         }

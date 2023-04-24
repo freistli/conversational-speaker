@@ -33,24 +33,31 @@ namespace ConversationalSpeaker
             _options.Validate();
 
             _audioConfig = AudioConfig.FromDefaultMicrophoneInput();
-
-            var autoDetectSourceLanguageConfig =
-                AutoDetectSourceLanguageConfig.FromLanguages(
-                    new string[] { _options.SpeechRecognitionLanguage, "zh-CN" });
-
-            var audioSynthesisOutputConfig = AudioConfig.FromDefaultSpeakerOutput();
-
-                    
-            var autoDetectSynthesisSourceLanguageConfig =
-                AutoDetectSourceLanguageConfig.FromOpenRange();
-
             SpeechConfig speechConfig = SpeechConfig.FromSubscription(_options.Key, _options.Region);
-            //speechConfig.SpeechRecognitionLanguage = _options.SpeechRecognitionLanguage;
+            
             speechConfig.SetProperty(PropertyId.SpeechServiceResponse_PostProcessingOption, "TrueText");
             speechConfig.SpeechSynthesisVoiceName = _options.SpeechSynthesisVoiceName;
 
-            _speechRecognizer = new SpeechRecognizer(speechConfig,autoDetectSourceLanguageConfig, _audioConfig);           
-            _speechSynthesizer = new SpeechSynthesizer(speechConfig,autoDetectSynthesisSourceLanguageConfig, audioSynthesisOutputConfig);
+            
+            var audioSynthesisOutputConfig = AudioConfig.FromDefaultSpeakerOutput();
+            var autoDetectSynthesisSourceLanguageConfig = AutoDetectSourceLanguageConfig.FromOpenRange();     
+
+            if (options.Value.AutoDetect.ToLower() == "true")
+                {     var autoDetectSourceLanguageConfig =
+                            AutoDetectSourceLanguageConfig.FromLanguages(
+                                new string[] { _options.SpeechRecognitionLanguage, "zh-CN" });     
+
+                    _speechRecognizer = new SpeechRecognizer(speechConfig,autoDetectSourceLanguageConfig, _audioConfig);           
+                        
+                }
+            else
+            {
+                    speechConfig.SpeechRecognitionLanguage = _options.SpeechRecognitionLanguage;
+                    _speechRecognizer = new SpeechRecognizer(speechConfig, _audioConfig);  
+            }
+
+                _speechSynthesizer = new SpeechSynthesizer(speechConfig,autoDetectSynthesisSourceLanguageConfig, audioSynthesisOutputConfig);
+
         }
 
         [SKFunction("Listen to the microphone and perform speech-to-text.")]
