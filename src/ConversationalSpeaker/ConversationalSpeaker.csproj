@@ -21,7 +21,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0-preview.2.23128.3" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0-preview.2.23128.3" />
     <PackageReference Include="Microsoft.SemanticKernel" Version="0.9.61.1-preview" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3"/>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 	<PackageReference Include="NetCoreAudio" Version="1.7.0" />
   </ItemGroup>
 
@@ -36,6 +36,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Handlers\WakePhrases\hey-computer.table">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Handlers\WakePhrases\hey-copilot.table">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Handlers\WakePhrases\hey-janet.table">

@@ -30,6 +30,7 @@ namespace ConversationalSpeaker
         private readonly ChatRequestSettings _chatRequestSettings;
 
         private readonly AzureOpenAiOptions _azureOpenAIOptions;
+        private readonly GeneralOptions _generalOptions;
 
         private Task _executeTask;
         private readonly CancellationTokenSource _cancelToken = new();
@@ -64,6 +65,7 @@ namespace ConversationalSpeaker
             _wakeWordListener = wakeWordListener;
             _semanticKernel = semanticKernel;
             _azureOpenAIOptions = azureOpenAIOptions?.Value;
+            _generalOptions = generalOptions?.Value;
 
             if (string.IsNullOrEmpty(_azureOpenAIOptions.ChatGPTUrl))
             {
@@ -71,7 +73,7 @@ namespace ConversationalSpeaker
                 _chatCompletion = _semanticKernel.GetService<IChatCompletion>();
                 _chatHistory = (OpenAIChatHistory)_chatCompletion.CreateNewChat(generalOptions.Value.SystemPrompt);
             }
-
+           
             _speechSkill = _semanticKernel.ImportSkill(speechSkill);
 
             _notificationSoundFilePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Handlers", "bing.mp3");
@@ -126,6 +128,7 @@ namespace ConversationalSpeaker
 
                     if (string.IsNullOrEmpty(userSpoke) == false)
                     {
+                        await _player.Play(_notificationSoundFilePath);
 
                         loopCount = 0;
                         // Get a reply from the AI and add it to the chat history.
@@ -141,17 +144,17 @@ namespace ConversationalSpeaker
                             }
                             else
                             {
-                                using (var httpClient = new HttpClient())
-                                {
-                                    var requestContentString = $"{{\"prompt\": \"{userSpoke}\",\"name\": \"\", \"messageId\":\"{messageId}\"}}";
-                                    var content = new StringContent(requestContentString, Encoding.UTF8, "application/json");
-                                    HttpResponseMessage result = await httpClient.PostAsync(new Uri(_azureOpenAIOptions.ChatGPTUrl), content);
-                                    var responseString = await result.Content.ReadAsStringAsync();
-                                    //Parse JSON string
-                                    var responseJson = JObject.Parse(responseString);
-                                    reply = responseJson["text"].ToString();
-                                    messageId = responseJson["id"].ToString();
-                                }
+                                    using (var httpClient = new HttpClient())
+                                    {
+                                        var requestContentString = $"{{\"prompt\": \"{userSpoke}\",\"name\": \"\", \"messageId\":\"{messageId}\"}}";
+                                        var content = new StringContent(requestContentString, Encoding.UTF8, "application/json");
+                                        HttpResponseMessage result = await httpClient.PostAsync(new Uri(_azureOpenAIOptions.ChatGPTUrl), content);
+                                        var responseString = await result.Content.ReadAsStringAsync();
+                                        //Parse JSON string
+                                        var responseJson = JObject.Parse(responseString);
+                                        reply = responseJson["text"].ToString();
+                                        messageId = responseJson["id"].ToString();
+                                    }                                
                             }
 
                         }
