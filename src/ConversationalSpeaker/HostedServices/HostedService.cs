@@ -126,6 +126,15 @@ namespace ConversationalSpeaker
                     SKContext context = await _semanticKernel.RunAsync(_speechSkill["Listen"]);
                     string userSpoke = context.Result;
 
+                    // If the user said "Goodbye" - stop listening and wait for the wake work again.
+                    if (userSpoke.StartsWith("goodbye", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        messageId = "";
+                        await _semanticKernel.RunAsync("Goodbye, talk to you later", _speechSkill["Speak"]);
+                        loopCount = 0;
+                        break;
+                    }
+
                     if (string.IsNullOrEmpty(userSpoke) == false)
                     {
                         await _player.Play(_notificationSoundFilePath);
@@ -152,8 +161,8 @@ namespace ConversationalSpeaker
                                         var responseString = await result.Content.ReadAsStringAsync();
                                         //Parse JSON string
                                         var responseJson = JObject.Parse(responseString);
-                                        reply = responseJson["text"].ToString();
-                                        messageId = responseJson["id"].ToString();
+                                        reply = responseJson["text"]?.ToString();
+                                        messageId = responseJson["id"]?.ToString();
                                     }                                
                             }
 
@@ -166,13 +175,7 @@ namespace ConversationalSpeaker
 
                         // Speak the AI's reply
                         await _semanticKernel.RunAsync(reply, _speechSkill["Speak"]);
-
-                        // If the user said "Goodbye" - stop listening and wait for the wake work again.
-                        if (userSpoke.StartsWith("goodbye", StringComparison.InvariantCultureIgnoreCase))
-                        {
-                            messageId = "";
-                            break;
-                        }
+                        
 
                     }
 
